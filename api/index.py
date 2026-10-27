@@ -1,12 +1,15 @@
 """
 FastAPI Serverless Application para Préstamo Inteligente.
 Compatible con Vercel Serverless Functions y ejecución local con Uvicorn.
+Sirve tanto las rutas de API (/api/...) como la interfaz web y el modelo CNN.
 """
 
+import os
 import datetime
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 try:
@@ -53,7 +56,10 @@ class SincronizarClasesRequest(BaseModel):
     clases: List[str]
 
 
-@app.get("/api/health")
+router = APIRouter()
+
+
+@router.get("/health")
 def health():
     return {
         "status": "ok",
@@ -62,13 +68,13 @@ def health():
     }
 
 
-@app.get("/api/objetos")
+@router.get("/objetos")
 def listar_objetos():
     objetos = db.query("SELECT * FROM objetos ORDER BY nombre ASC")
     return objetos
 
 
-@app.get("/api/objetos/{objeto_id}")
+@router.get("/objetos/{objeto_id}")
 def obtener_objeto(objeto_id: str):
     filas = db.query("SELECT * FROM objetos WHERE id = ?", [objeto_id])
     if not filas:
@@ -76,7 +82,7 @@ def obtener_objeto(objeto_id: str):
     return filas[0]
 
 
-@app.post("/api/objetos")
+@router.post("/objetos")
 def crear_objeto(req: CrearObjetoRequest):
     existente = db.query("SELECT id FROM objetos WHERE id = ?", [req.id])
     if existente:
@@ -104,7 +110,7 @@ def crear_objeto(req: CrearObjetoRequest):
     }
 
 
-@app.post("/api/prestamos")
+@router.post("/prestamos")
 def registrar_prestamo(req: PrestamoRequest):
     filas = db.query("SELECT * FROM objetos WHERE id = ?", [req.objeto_id])
     if not filas:
@@ -117,14 +123,12 @@ def registrar_prestamo(req: PrestamoRequest):
     ahora = datetime.datetime.now().isoformat()
     persona = (req.persona or "").strip() or "Anónimo"
 
-    # 1. Descontar stock
     db.query(
         "UPDATE objetos SET stock_disponible = stock_disponible - 1 WHERE id = ?",
         [req.objeto_id],
         commit=True,
     )
 
-    # 2. Crear préstamo abierto
     db.query(
         """
         INSERT INTO prestamos (objeto_id, persona, fecha_prestamo, abierto)
@@ -134,7 +138,6 @@ def registrar_prestamo(req: PrestamoRequest):
         commit=True,
     )
 
-    # 3. Registrar movimiento
     db.query(
         """
         INSERT INTO movimientos (objeto_id, tipo, cantidad, persona, fecha, nota)
@@ -147,7 +150,7 @@ def registrar_prestamo(req: PrestamoRequest):
     return {"status": "ok", "mensaje": f"Préstamo registrado a {persona}"}
 
 
-@app.post("/api/devoluciones")
+@router.post("/devoluciones")
 def registrar_devolucion(req: DevolucionRequest):
     filas = db.query("SELECT * FROM objetos WHERE id = ?", [req.objeto_id])
     if not filas:
@@ -160,7 +163,6 @@ def registrar_devolucion(req: DevolucionRequest):
     ahora = datetime.datetime.now().isoformat()
     nombre_persona = (req.persona or "").strip()
 
-    # Buscar préstamo abierto correspondiente
     abiertos = db.query(
         "SELECT * FROM prestamos WHERE objeto_id = ? AND abierto = 1 ORDER BY fecha_prestamo ASC",
         [req.objeto_id],
@@ -174,14 +176,12 @@ def registrar_devolucion(req: DevolucionRequest):
     if not prestamo_a_cerrar and abiertos:
         prestamo_a_cerrar = abiertos[0]
 
-    # 1. Incrementar stock
     db.query(
         "UPDATE objetos SET stock_disponible = MIN(stock_total, stock_disponible + 1) WHERE id = ?",
         [req.objeto_id],
         commit=True,
     )
 
-    # 2. Cerrar préstamo si existe
     persona_final = nombre_persona or "Anónimo"
     if prestamo_a_cerrar:
         persona_final = prestamo_a_cerrar["persona"]
@@ -191,7 +191,6 @@ def registrar_devolucion(req: DevolucionRequest):
             commit=True,
         )
 
-    # 3. Registrar movimiento
     nota = "" if prestamo_a_cerrar else "Devolución sin préstamo abierto registrado"
     db.query(
         """
@@ -205,13 +204,13 @@ def registrar_devolucion(req: DevolucionRequest):
     return {"status": "ok", "mensaje": f"Devolución registrada de {persona_final}"}
 
 
-@app.get("/api/movimientos")
+@router.get("/movimientos")
 def listar_movimientos():
     movimientos = db.query("SELECT * FROM movimientos ORDER BY fecha DESC LIMIT 100")
     return movimientos
 
 
-@app.post("/api/sincronizar-clases")
+@router.post("/sincronizar-clases")
 def sincronizar_clases(req: SincronizarClasesRequest):
     existentes = db.query("SELECT id FROM objetos")
     ids = set(o["id"] for o in existentes)
@@ -236,3 +235,13 @@ def sincronizar_clases(req: SincronizarClasesRequest):
         ids.add(clase)
 
     return {"sincronizados": nuevos}
+
+
+# Montar las rutas API tanto en /api/... como directamente
+app.include_router(router, prefix="/api")
+app.include_router(router)
+
+# Montar los archivos estáticos en la raíz (index.html, css, js, modelo_web)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if os.path.exists(os.path.join(ROOT_DIR, "index.html")):
+    app.mount("/", StaticFiles(directory=ROOT_DIR, html=True), name="static")
