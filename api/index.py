@@ -25,14 +25,30 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def corregir_ruta_vercel(request: Request, call_next):
-    # En Vercel, la ruta original solicitada se envía en el encabezado x-matched-path
-    matched = request.headers.get("x-matched-path", "")
-    if matched:
-        request.scope["path"] = matched
-    response = await call_next(request)
-    return response
+import urllib.parse
+
+
+class VercelPathMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http":
+            headers = dict(scope.get("headers", []))
+            matched = headers.get(b"x-matched-path", b"").decode("utf-8")
+            query = scope.get("query_string", b"").decode("utf-8")
+            if matched and matched != "/api/index.py":
+                scope["path"] = matched
+            elif "path=" in query:
+                params = urllib.parse.parse_qs(query)
+                subpath = params.get("path", [""])[0].strip("/")
+                if subpath:
+                    scope["path"] = f"/api/{subpath}"
+            scope["raw_path"] = scope["path"].encode("utf-8")
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(VercelPathMiddleware)
 
 
 @app.on_event("startup")
