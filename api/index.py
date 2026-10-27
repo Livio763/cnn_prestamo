@@ -9,6 +9,7 @@ import datetime
 from typing import Optional, List
 from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -241,7 +242,16 @@ def sincronizar_clases(req: SincronizarClasesRequest):
 app.include_router(router, prefix="/api")
 app.include_router(router)
 
-# Montar los archivos estáticos en la raíz (index.html, css, js, modelo_web)
+# Ruta raíz para servir index.html
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if os.path.exists(os.path.join(ROOT_DIR, "index.html")):
+
+@app.get("/")
+def home():
+    index_path = os.path.join(ROOT_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"status": "ok", "mensaje": "Préstamo Inteligente"}
+
+# Montar los archivos estáticos en la raíz (css, js, modelo_web)
+if os.path.exists(os.path.join(ROOT_DIR, "css")):
     app.mount("/", StaticFiles(directory=ROOT_DIR, html=True), name="static")
