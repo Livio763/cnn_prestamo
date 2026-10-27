@@ -57,10 +57,19 @@ class SincronizarClasesRequest(BaseModel):
     clases: List[str]
 
 
+@app.middleware("http")
+async def registrar_ruta_middleware(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Request-Path"] = request.url.path
+    return response
+
+
 router = APIRouter()
 
 
 @router.get("/health")
+@router.get("/index")
+@router.get("/index/health")
 def health():
     return {
         "status": "ok",
@@ -240,6 +249,7 @@ def sincronizar_clases(req: SincronizarClasesRequest):
 
 # Montar las rutas API tanto en /api/... como directamente
 app.include_router(router, prefix="/api")
+app.include_router(router, prefix="/api/index")
 app.include_router(router)
 
 # Ruta raíz para servir index.html
