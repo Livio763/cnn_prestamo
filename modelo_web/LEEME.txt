@@ -1,0 +1,1 @@
+# Esta carpeta contendrá model.json y los fragmentos .bin generados por entrenar.py

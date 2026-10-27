@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Punto Verde Inteligente - Control de Inventario y Reciclaje</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-yellow: #f59e0b;
+      --accent-green: #10b981;
+    }
+
+    * { -webkit-tap-highlight-color: transparent; }
+    html { height: 100%; }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      min-height: 100dvh;
+      padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+    }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(15, 23, 42, 0.94);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--card-border);
+      padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+    }
+
+    .glass-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
+    }
+
+    .cam-wrap {
+      position: relative;
+      width: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      border: 1px solid var(--card-border);
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+    }
+
+    .badge-status {
+      font-size: 1rem;
+      padding: 8px 18px;
+      border-radius: 50px;
+      font-weight: 600;
+      display: inline-block;
+      transition: all 0.3s ease;
+    }
+
+    .btn-xl {
+      padding: 14px;
+      font-size: 1.05rem;
+      border-radius: 14px;
+    }
+
+    .bin-card {
+      border-radius: 14px;
+      padding: 16px;
+      border: 2px solid transparent;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+      background: rgba(255,255,255,0.03);
+    }
+    .bin-yellow {
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+    .bin-yellow.active {
+      border-color: var(--accent-yellow);
+      background: rgba(245, 158, 11, 0.1);
+    }
+    .bin-green {
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+    .bin-green.active {
+      border-color: var(--accent-green);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .pulse-alert {
+      animation: pulse-danger 1.5s infinite;
+    }
+
+    @keyframes pulse-danger {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Encabezado fijo -->
+  <header class="app-header d-flex justify-content-between align-items-center">
+    <div>
+      <div class="fw-bold text-success" style="font-size:1.05rem; line-height:1.1;">♻️ Punto Verde</div>
+      <div class="text-secondary" style="font-size:.7rem;">Visión artificial · reciclaje</div>
+    </div>
+    <span class="badge bg-dark border border-secondary text-info" id="status-db">
+      <i class="bi bi-database-check me-1"></i> IndexedDB
+    </span>
+  </header>
+
+  <main class="mx-auto px-3 py-3" style="max-width: 560px;">
+
+    <!-- Cámara y detección -->
+    <section class="glass-card p-3 mb-3">
+      <div class="cam-wrap mb-3">
+        <video id="video" playsinline autoplay muted style="display: none;"></video>
+        <canvas id="canvas" width="224" height="224"></canvas>
+        <canvas id="canvas-crop" width="224" height="224" style="display: none;"></canvas>
+      </div>
+
+      <div class="text-center">
+        <div id="badge-destino" class="badge-status bg-secondary text-white">
+          <i class="bi bi-search me-1"></i> Esperando residuo...
+        </div>
+        <h4 id="nombre-objeto" class="mt-2 mb-1 fw-bold text-light">-</h4>
+        <p id="confianza" class="text-secondary small mb-2">Cargando modelo neuronal...</p>
+
+        <div id="panel-identificacion" class="p-2 rounded bg-black bg-opacity-25 border border-secondary border-opacity-25 text-center small">
+          <div class="d-flex justify-content-center gap-2 flex-wrap">
+            <span id="pill-lata" class="badge rounded-pill bg-dark border border-secondary text-secondary px-2 py-1">🥫 Lata</span>
+            <span id="pill-plastico" class="badge rounded-pill bg-dark border border-secondary text-secondary px-2 py-1">🧴 Plástico</span>
+            <span id="pill-vidrio" class="badge rounded-pill bg-dark border border-secondary text-secondary px-2 py-1">🍾 Vidrio</span>
+            <span id="pill-fondo" class="badge rounded-pill bg-dark border border-secondary text-secondary px-2 py-1">🌫️ Fondo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-grid gap-2 mt-3">
+        <button id="btn-depositar" class="btn btn-success btn-xl fw-bold" onclick="depositarDetectado()" disabled>
+          <i class="bi bi-box-arrow-in-down me-1"></i> Depositar detectado (+10 pts)
+        </button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-light flex-fill" onclick="cambiarCamara()">
+            <i class="bi bi-arrow-repeat me-1"></i> Girar
+          </button>
+          <button class="btn btn-outline-info flex-fill" onclick="iniciarCamara()">
+            <i class="bi bi-camera-video me-1"></i> Activar cámara
+          </button>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-center align-items-center gap-1 mt-3 flex-wrap">
+        <span class="small text-secondary me-1">Prueba:</span>
+        <button class="btn btn-sm btn-outline-warning" onclick="depositarManual('lata')">+1 Lata</button>
+        <button class="btn btn-sm btn-outline-warning" onclick="depositarManual('plastico')">+1 Plástico</button>
+        <button class="btn btn-sm btn-outline-success" onclick="depositarManual('vidrio')">+1 Vidrio</button>
+      </div>
+    </section>
+
+    <!-- Contenedores -->
+    <section class="glass-card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-semibold mb-0"><i class="bi bi-trash3 me-2 text-warning"></i>Contenedores</h6>
+        <span class="badge bg-success bg-opacity-25 text-success border border-success px-2 py-1">
+          Puntos: <strong id="contador-puntos">0</strong>
+        </span>
+      </div>
+
+      <!-- Contenedor Amarillo -->
+      <div id="card-amarillo" class="bin-card bin-yellow mb-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h6 class="fw-bold text-warning mb-1">
+              🟡 Amarillo <span class="badge bg-warning text-dark ms-1">Latas y Plástico</span>
+            </h6>
+            <div class="small text-secondary mt-1">
+              🥫 Latas: <strong id="cant-latas" class="text-light">0</strong> |
+              🧴 Plásticos: <strong id="cant-plasticos" class="text-light">0</strong>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="vaciarContenedor('amarillo')">
+            <i class="bi bi-arrow-repeat me-1"></i>Vaciar
+          </button>
+        </div>
+        <div class="mt-3">
+          <div class="d-flex justify-content-between small text-secondary mb-1">
+            <span>Ocupación: <strong id="texto-amarillo">0 / 60 unidades</strong></span>
+            <span id="porc-amarillo">0%</span>
+          </div>
+          <div class="progress" style="height: 10px; background-color: rgba(255,255,255,0.1);">
+            <div id="prog-amarillo" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+          </div>
+        </div>
+        <div id="alerta-amarillo" class="text-danger small fw-bold mt-2 d-none">
+          ⚠️ ¡Contenedor casi lleno! Por favor reemplazar la bolsa.
+        </div>
+      </div>
+
+      <!-- Contenedor Verde -->
+      <div id="card-verde" class="bin-card bin-green mb-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h6 class="fw-bold text-success mb-1">
+              🟢 Verde <span class="badge bg-success ms-1">Vidrio</span>
+            </h6>
+            <div class="small text-secondary mt-1">
+              🍾 Botellas de Vidrio: <strong id="cant-vidrio" class="text-light">0</strong>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="vaciarContenedor('verde')">
+            <i class="bi bi-arrow-repeat me-1"></i>Vaciar
+          </button>
+        </div>
+        <div class="mt-3">
+          <div class="d-flex justify-content-between small text-secondary mb-1">
+            <span>Ocupación: <strong id="texto-verde">0 / 30 unidades</strong></span>
+            <span id="porc-verde">0%</span>
+          </div>
+          <div class="progress" style="height: 10px; background-color: rgba(255,255,255,0.1);">
+            <div id="prog-verde" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+          </div>
+        </div>
+        <div id="alerta-verde" class="text-danger small fw-bold mt-2 d-none">
+          ⚠️ ¡Contenedor de vidrio lleno! Riesgo de sobrepeso o rotura.
+        </div>
+      </div>
+
+      <!-- Historial -->
+      <div class="pt-3 border-top border-secondary border-opacity-25">
+        <h6 class="text-secondary small fw-semibold mb-2">Últimos depósitos (IndexedDB):</h6>
+        <div id="lista-historial" class="small text-secondary" style="max-height: 120px; overflow-y: auto;">
+          <div class="text-muted fst-italic">Aún no hay depósitos registrados hoy.</div>
+        </div>
+      </div>
+    </section>
+
+    <p class="text-secondary text-center mb-2" style="font-size:.7rem;">
+      Usa la cámara trasera y centra el envase dentro del recuadro.
+    </p>
+  </main>
+
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+  <script>
+    // ==========================================
+    // 1. CONFIGURACIÓN DEL SISTEMA
+    // ==========================================
+    let CLASES = ["fondo", "lata", "plastico", "vidrio"];
+    let TAMANO_MODELO = 160;
+    let UMBRAL_CERTEZA = 0.50; // Mínimo 50% de certeza para validar residuo
+    const ROI_FRACCION = 0.70; // Recorte central del frame (coincide con el recuadro HUD)
+    const CAPACIDAD_AMARILLO = 60;
+    const CAPACIDAD_VERDE = 30;
+
+    let modelo = null;
+    let videoStreamActivo = false;
+    let claseActual = null;
+    let probActual = 0;
+    let db = null;
+
+    // Estado del HUD Bounding Box y filtro de consenso
+    let estadoHUD = {
+      tipo: "esperando", // "esperando", "detectado", "tapada"
+      clase: null,
+      prob: 0,
+      texto: "Centra el residuo aquí"
+    };
+    let rachaClase = null;
+    let contadorRacha = 0;
+    const MIN_RACHA = 2; // Requiere al menos 2 lecturas consecutivas estables
+
+    // Estado en memoria
+    let inventario = {
+      lata: 0,
+      plastico: 0,
+      vidrio: 0,
+      puntos: 0
+    };
+
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const cropCanvas = document.getElementById("canvas-crop");
+    const cropCtx = cropCanvas.getContext("2d");
+
+    // ==========================================
+    // 2. SISTEMA DE AUDIO (WEB AUDIO API)
+    // ==========================================
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function sonarBeep(tipo = "exito") {
+      try {
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (tipo === "exito") {
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.08); // A5
+          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.25);
+        } else if (tipo === "alerta") {
+          osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+          osc.frequency.setValueAtTime(250, audioCtx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.35);
+        }
+      } catch (e) {
+        console.warn("Audio no soportado:", e);
+      }
+    }
+
+    // ==========================================
+    // 3. BASE DE DATOS LOCAL (INDEXEDDB)
+    // ==========================================
+    function inicializarIndexedDB() {
+      const request = indexedDB.open("PuntoVerdeDB", 1);
+
+      request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("inventario")) {
+          db.createObjectStore("inventario", { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("movimientos")) {
+          const storeMov = db.createObjectStore("movimientos", { keyPath: "id", autoIncrement: true });
+          storeMov.createIndex("fecha", "fecha", { unique: false });
+        }
+      };
+
+      request.onsuccess = (e) => {
+        db = e.target.result;
+        document.getElementById("status-db").innerHTML = `<i class="bi bi-database-check me-1"></i> IndexedDB Listo`;
+        cargarEstadoGuardado();
+        cargarHistorialReciente();
+      };
+
+      request.onerror = (e) => {
+        console.error("Error al abrir IndexedDB:", e);
+        document.getElementById("status-db").innerText = "DB Error";
+      };
+    }
+
+    function guardarEstado() {
+      if (!db) return;
+      const tx = db.transaction("inventario", "readwrite");
+      tx.objectStore("inventario").put({ id: "actual", ...inventario });
+    }
+
+    function registrarMovimiento(tipo, contenedor, accion = "deposito") {
+      if (!db) return;
+      const tx = db.transaction("movimientos", "readwrite");
+      const mov = {
+        fecha: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        tipo,
+        contenedor,
+        accion
+      };
+      tx.objectStore("movimientos").add(mov);
+      tx.oncomplete = () => cargarHistorialReciente();
+    }
+
+    function cargarEstadoGuardado() {
+      if (!db) return;
+      const tx = db.transaction("inventario", "readonly");
+      const req = tx.objectStore("inventario").get("actual");
+      req.onsuccess = () => {
+        if (req.result) {
+          inventario = { ...inventario, ...req.result };
+          actualizarUIInventario();
+        }
+      };
+    }
+
+    function cargarHistorialReciente() {
+      if (!db) return;
+      const tx = db.transaction("movimientos", "readonly");
+      const store = tx.objectStore("movimientos");
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const items = req.result ? req.result.slice(-5).reverse() : [];
+        const cont = document.getElementById("lista-historial");
+        if (items.length === 0) {
+          cont.innerHTML = `<div class="text-muted fst-italic">Aún no hay depósitos registrados.</div>`;
+          return;
+        }
+        cont.innerHTML = items.map(m => {
+          if (m.accion === "vaciado") {
+            return `<div><span class="text-secondary">[${m.fecha}]</span> <span class="text-info">♻️ Vaciado de contenedor ${m.contenedor}</span></div>`;
+          }
+          return `<div><span class="text-secondary">[${m.fecha}]</span> +1 ${m.tipo.toUpperCase()} depositado en contenedor ${m.contenedor}</div>`;
+        }).join("");
+      };
+    }
+
+    // ==========================================
+    // 4. CARGA DE MODELO Y CLASES
+    // ==========================================
+    // Header para saltar el aviso intermedio de ngrok en los fetch (inofensivo fuera de ngrok)
+    const NGROK_HDR = { "ngrok-skip-browser-warning": "true" };
+
+    async function inicializarIA() {
+      try {
+        // Intentar leer clases.json con cache-busting
+        const timestamp = Date.now();
+        const resClases = await fetch("modelo_web/clases.json?t=" + timestamp, { headers: NGROK_HDR });
+        if (resClases.ok) {
+          const meta = await resClases.json();
+          if (meta.clases && meta.clases.length) CLASES = meta.clases;
+          if (meta.tamano_img) {
+            TAMANO_MODELO = meta.tamano_img;
+            cropCanvas.width = TAMANO_MODELO;
+            cropCanvas.height = TAMANO_MODELO;
+          }
+        }
+      } catch (e) {
+        console.warn("clases.json no encontrado, usando clases por defecto.");
+      }
+
+      try {
+        const timestamp = Date.now();
+        modelo = await tf.loadLayersModel(tf.io.browserHTTPRequest(
+          "modelo_web/model.json?t=" + timestamp,
+          { requestInit: { headers: NGROK_HDR } }
+        ));
+        document.getElementById("confianza").innerText = "Modelo de IA activo y listo para clasificar";
+        document.getElementById("confianza").className = "text-success small mb-0";
+      } catch (err) {
+        console.error("Error al cargar modelo:", err);
+        document.getElementById("confianza").innerText = "⚠️ Error: " + (err.message || err);
+        document.getElementById("confianza").className = "text-danger small mb-0";
+      }
+    }
+
+    // ==========================================
+    // 5. CÁMARA Y PREDICCIÓN EN TIEMPO REAL
+    // ==========================================
+    let facingActual = "environment";
+    let intervalosIniciados = false;
+
+    async function iniciarCamara(facing = facingActual) {
+      const conf = document.getElementById("confianza");
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        conf.innerText = "Este navegador no soporta cámara (requiere HTTPS).";
+        return;
+      }
+      try {
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(t => t.stop());
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facing },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+        video.srcObject = stream;
+        video.setAttribute("playsinline", "true");
+        await video.play();
+        videoStreamActivo = true;
+        facingActual = facing;
+        conf.innerText = "Cámara activa · apunta al residuo";
+        if (!intervalosIniciados) {
+          setInterval(renderCamara, 33);
+          setInterval(predecir, 250);
+          intervalosIniciados = true;
+        }
+      } catch (err) {
+        conf.innerText = "No se pudo acceder a la cámara: " + (err.message || err);
+      }
+    }
+
+    function cambiarCamara() {
+      iniciarCamara(facingActual === "environment" ? "user" : "environment");
+    }
+
+    window.addEventListener("load", () => iniciarCamara());
+
+    function renderCamara() {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      dibujarHUD(ctx, canvas.width, canvas.height);
+    }
+
+    function dibujarHUD(ctx, w, h) {
+      const pad = 34;
+      const x = pad;
+      const y = pad;
+      const boxW = w - (pad * 2);
+      const boxH = h - (pad * 2);
+      const cornerLen = 18;
+
+      ctx.save();
+
+      if (estadoHUD.tipo === "tapada") {
+        const color = "#ef4444";
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(x, y, boxW, boxH);
+        dibujarBadgeHUD(ctx, w / 2, y - 10, "⚠️ CÁMARA TAPADA O SIN LUZ", color, "#ffffff");
+      } else if (estadoHUD.tipo === "detectado" && estadoHUD.clase) {
+        let color = "#f59e0b";
+        let icono = "🥫";
+        let nombre = "LATA";
+        if (estadoHUD.clase === "plastico") {
+          color = "#06b6d4";
+          icono = "🧴";
+          nombre = "PLÁSTICO";
+        } else if (estadoHUD.clase === "vidrio") {
+          color = "#10b981";
+          icono = "🍾";
+          nombre = "VIDRIO";
+        }
+
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x, y, boxW, boxH);
+
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = "round";
+
+        // Esquina Superior Izquierda
+        ctx.beginPath();
+        ctx.moveTo(x, y + cornerLen);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x + cornerLen, y);
+        ctx.stroke();
+
+        // Esquina Superior Derecha
+        ctx.beginPath();
+        ctx.moveTo(x + boxW - cornerLen, y);
+        ctx.lineTo(x + boxW, y);
+        ctx.lineTo(x + boxW, y + cornerLen);
+        ctx.stroke();
+
+        // Esquina Inferior Izquierda
+        ctx.beginPath();
+        ctx.moveTo(x, y + boxH - cornerLen);
+        ctx.lineTo(x, y + boxH);
+        ctx.lineTo(x + cornerLen, y + boxH);
+        ctx.stroke();
+
+        // Esquina Inferior Derecha
+        ctx.beginPath();
+        ctx.moveTo(x + boxW - cornerLen, y + boxH);
+        ctx.lineTo(x + boxW, y + boxH);
+        ctx.lineTo(x + boxW, y + boxH - cornerLen);
+        ctx.stroke();
+
+        // Retícula central tenue
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.lineWidth = 1;
+        const cx = w / 2;
+        const cy = h / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+        ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+        ctx.stroke();
+
+        const textoBadge = `${icono} ES ${nombre}`;
+        dibujarBadgeHUD(ctx, w / 2, y - 10, textoBadge, color, "#ffffff");
+      } else {
+        const color = "rgba(148, 163, 184, 0.65)";
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(x, y, boxW, boxH);
+
+        ctx.setLineDash([]);
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(x, y + 10); ctx.lineTo(x, y); ctx.lineTo(x + 10, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x + boxW - 10, y); ctx.lineTo(x + boxW, y); ctx.lineTo(x + boxW, y + 10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y + boxH - 10); ctx.lineTo(x, y + boxH); ctx.lineTo(x + 10, y + boxH); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x + boxW - 10, y + boxH); ctx.lineTo(x + boxW, y + boxH); ctx.lineTo(x + boxW, y + boxH - 10); ctx.stroke();
+
+        const cx = w / 2;
+        const cy = h / 2;
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy);
+        ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6);
+        ctx.stroke();
+
+        dibujarBadgeHUD(ctx, w / 2, y - 10, "🔍 CENTRA EL RESIDUO", "rgba(51, 65, 85, 0.9)", "#94a3b8");
+      }
+
+      ctx.restore();
+    }
+
+    function dibujarBadgeHUD(ctx, cx, cy, texto, colorBorde, colorTexto) {
+      ctx.font = "bold 11px system-ui, sans-serif";
+      const metrics = ctx.measureText(texto);
+      const bgW = metrics.width + 18;
+      const bgH = 20;
+      const rx = cx - (bgW / 2);
+      const ry = cy - (bgH / 2);
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+      ctx.strokeStyle = colorBorde;
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.roundRect(rx, ry, bgW, bgH, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = colorTexto;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(texto, cx, cy + 1);
+    }
+
+    async function predecir() {
+      if (!modelo || !videoStreamActivo) return;
+
+      // AISLAMIENTO CRÍTICO: Recortar directamente del flujo de vídeo limpio, NUNCA del canvas HUD
+      // Recorte central cuadrado (ROI) para que el objeto domine el encuadre, igual que en el dataset
+      const vw = video.videoWidth || 400;
+      const vh = video.videoHeight || 400;
+      const lado = Math.min(vw, vh) * ROI_FRACCION;
+      const sx = (vw - lado) / 2;
+      const sy = (vh - lado) / 2;
+      cropCtx.drawImage(video, sx, sy, lado, lado, 0, 0, TAMANO_MODELO, TAMANO_MODELO);
+      const imgData = cropCtx.getImageData(0, 0, TAMANO_MODELO, TAMANO_MODELO);
+
+      // 1. Detección física de cámara tapada u oscuridad (brillo promedio < 20)
+      const data = imgData.data;
+      let sumaLuminancia = 0;
+      const totalPixeles = TAMANO_MODELO * TAMANO_MODELO;
+      for (let i = 0; i < data.length; i += 4) {
+        sumaLuminancia += (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+      }
+      const brilloPromedio = sumaLuminancia / totalPixeles;
+
+      if (brilloPromedio < 20) {
+        contadorRacha = 0;
+        rachaClase = null;
+        estadoHUD = { tipo: "tapada", clase: null, texto: "Cámara tapada o sin luz" };
+        actualizarUIClasificacion(null);
+        document.getElementById("nombre-objeto").innerText = "Cámara tapada o sin luz";
+        document.getElementById("confianza").innerText = "Coloca el residuo con buena iluminación frente a la cámara";
+        actualizarIndicadoresClase(null);
+        return;
+      }
+
+      const tensor = tf.tidy(() => {
+        return tf.browser.fromPixels(imgData).toFloat().expandDims(0);
+      });
+
+      try {
+        const predicciones = await modelo.predict(tensor).data();
+        tensor.dispose();
+
+        let ordenados = CLASES.map((c, i) => ({ clase: c.toLowerCase(), prob: predicciones[i] || 0 }))
+                              .sort((a, b) => b.prob - a.prob);
+
+        const top1 = ordenados[0];
+
+        // REGLA DE RECONOCIMIENTO:
+        // Es fondo solo si la clase 'fondo' gana, o si el objeto ganador es inseguro (< umbral).
+        // Se eliminaron las reglas que forzaban fondo por probFondo>=0.25 o por margen top1-top2<0.15,
+        // porque anulaban botellas (vidrio/plástico) correctamente detectadas.
+        const esFondo = (
+          top1.clase === "fondo" ||
+          top1.prob < UMBRAL_CERTEZA
+        );
+
+        if (esFondo) {
+          contadorRacha = 0;
+          rachaClase = null;
+          estadoHUD = { tipo: "esperando", clase: null, texto: "Centra el residuo aquí" };
+          actualizarUIClasificacion(null);
+          actualizarIndicadoresClase("fondo");
+        } else {
+          // Posible residuo: aplicar consenso temporal (mínimo 2 frames consecutivos estables)
+          if (top1.clase === rachaClase) {
+            contadorRacha++;
+          } else {
+            rachaClase = top1.clase;
+            contadorRacha = 1;
+          }
+
+          if (contadorRacha >= MIN_RACHA) {
+            estadoHUD = { tipo: "detectado", clase: top1.clase, texto: "ES " + top1.clase.toUpperCase() };
+            actualizarUIClasificacion(top1.clase);
+            actualizarIndicadoresClase(top1.clase);
+          } else {
+            estadoHUD = { tipo: "esperando", clase: null, texto: "Estabilizando..." };
+            actualizarUIClasificacion(null);
+            actualizarIndicadoresClase("fondo");
+          }
+        }
+      } catch (e) {
+        tensor.dispose();
+      }
+    }
+
+    function actualizarIndicadoresClase(claseActiva) {
+      const clases = ["lata", "plastico", "vidrio", "fondo"];
+      const colores = {
+        lata: "badge rounded-pill bg-warning text-dark px-2 py-1 shadow-sm",
+        plastico: "badge rounded-pill bg-info text-dark px-2 py-1 shadow-sm",
+        vidrio: "badge rounded-pill bg-success text-white px-2 py-1 shadow-sm",
+        fondo: "badge rounded-pill bg-secondary text-white px-2 py-1 shadow-sm"
+      };
+
+      clases.forEach(c => {
+        const el = document.getElementById("pill-" + c);
+        if (el) {
+          if (claseActiva === c) {
+            el.className = colores[c];
+          } else {
+            el.className = "badge rounded-pill bg-dark border border-secondary text-secondary px-2 py-1";
+          }
+        }
+      });
+    }
+
+    function actualizarUIClasificacion(clase) {
+      const badge = document.getElementById("badge-destino");
+      const nombre = document.getElementById("nombre-objeto");
+      const conf = document.getElementById("confianza");
+      const btnDepositar = document.getElementById("btn-depositar");
+      const cardAmarillo = document.getElementById("card-amarillo");
+      const cardVerde = document.getElementById("card-verde");
+
+      cardAmarillo.classList.remove("active");
+      cardVerde.classList.remove("active");
+
+      if (!clase) {
+        claseActual = null;
+        badge.className = "badge-status bg-secondary text-white";
+        badge.innerHTML = `<i class="bi bi-search me-1"></i> Esperando residuo...`;
+        nombre.innerText = "Esperando residuo...";
+        conf.innerText = "Coloca el material frente a la cámara";
+        btnDepositar.disabled = true;
+        return;
+      }
+
+      claseActual = clase;
+      btnDepositar.disabled = false;
+      conf.innerText = "Residuo reconocido directamente";
+
+      if (clase === "lata") {
+        badge.className = "badge-status bg-warning text-dark";
+        badge.innerText = "🟡 Contenedor Amarillo";
+        nombre.innerText = "Es Lata";
+        cardAmarillo.classList.add("active");
+      } else if (clase === "plastico") {
+        badge.className = "badge-status bg-warning text-dark";
+        badge.innerText = "🟡 Contenedor Amarillo";
+        nombre.innerText = "Es Plástico";
+        cardAmarillo.classList.add("active");
+      } else if (clase === "vidrio") {
+        badge.className = "badge-status bg-success text-white";
+        badge.innerText = "🟢 Contenedor Verde";
+        nombre.innerText = "Es Vidrio";
+        cardVerde.classList.add("active");
+      }
+    }
+
+    // ==========================================
+    // 6. ACCIONES DE DEPÓSITO E INVENTARIO
+    // ==========================================
+    function depositarDetectado() {
+      if (!claseActual) return;
+      depositarManual(claseActual);
+    }
+
+    function depositarManual(tipo) {
+      sonarBeep("exito");
+
+      if (tipo === "lata") {
+        inventario.lata += 1;
+        registrarMovimiento("lata", "amarillo");
+      } else if (tipo === "plastico") {
+        inventario.plastico += 1;
+        registrarMovimiento("plastico", "amarillo");
+      } else if (tipo === "vidrio") {
+        inventario.vidrio += 1;
+        registrarMovimiento("vidrio", "verde");
+      }
+
+      inventario.puntos += 10;
+      guardarEstado();
+      actualizarUIInventario();
+    }
+
+    function actualizarUIInventario() {
+      // Contadores
+      document.getElementById("cant-latas").innerText = inventario.lata;
+      document.getElementById("cant-plasticos").innerText = inventario.plastico;
+      document.getElementById("cant-vidrio").innerText = inventario.vidrio;
+      document.getElementById("contador-puntos").innerText = inventario.puntos;
+
+      // Amarillo
+      const totalAmarillo = inventario.lata + inventario.plastico;
+      const porcAmarillo = Math.min(100, Math.round((totalAmarillo / CAPACIDAD_AMARILLO) * 100));
+      document.getElementById("texto-amarillo").innerText = `${totalAmarillo} / ${CAPACIDAD_AMARILLO} unidades`;
+      document.getElementById("porc-amarillo").innerText = `${porcAmarillo}%`;
+      const progAmarillo = document.getElementById("prog-amarillo");
+      progAmarillo.style.width = `${porcAmarillo}%`;
+
+      const alertaAmarillo = document.getElementById("alerta-amarillo");
+      if (porcAmarillo >= 90) {
+        alertaAmarillo.classList.remove("d-none");
+        document.getElementById("card-amarillo").classList.add("pulse-alert");
+        sonarBeep("alerta");
+      } else {
+        alertaAmarillo.classList.add("d-none");
+        document.getElementById("card-amarillo").classList.remove("pulse-alert");
+      }
+
+      // Verde
+      const porcVerde = Math.min(100, Math.round((inventario.vidrio / CAPACIDAD_VERDE) * 100));
+      document.getElementById("texto-verde").innerText = `${inventario.vidrio} / ${CAPACIDAD_VERDE} unidades`;
+      document.getElementById("porc-verde").innerText = `${porcVerde}%`;
+      const progVerde = document.getElementById("prog-verde");
+      progVerde.style.width = `${porcVerde}%`;
+
+      const alertaVerde = document.getElementById("alerta-verde");
+      if (porcVerde >= 90) {
+        alertaVerde.classList.remove("d-none");
+        document.getElementById("card-verde").classList.add("pulse-alert");
+        sonarBeep("alerta");
+      } else {
+        alertaVerde.classList.add("d-none");
+        document.getElementById("card-verde").classList.remove("pulse-alert");
+      }
+    }
+
+    function vaciarContenedor(color) {
+      if (color === "amarillo") {
+        const vaciadas = inventario.lata + inventario.plastico;
+        inventario.lata = 0;
+        inventario.plastico = 0;
+        registrarMovimiento(`${vaciadas} uds`, "amarillo", "vaciado");
+      } else if (color === "verde") {
+        const vaciadas = inventario.vidrio;
+        inventario.vidrio = 0;
+        registrarMovimiento(`${vaciadas} uds`, "verde", "vaciado");
+      }
+      guardarEstado();
+      actualizarUIInventario();
+    }
+
+    // Inicialización general
+    inicializarIndexedDB();
+    inicializarIA();
+  </script>
+</body>
+</html>

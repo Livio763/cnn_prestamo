@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# Logs
+*.log
+ngrok.log
+server.log
+train.log
+continuo.log
+
+# Data & backups - typically large
+dataset/
+versiones/
+datos/fotos/
+datos/tienda.db
+datos/*.db
+
+# Models (large binaries)
+modelo_reciclaje.keras
+*.keras
+modelo_web/*.bin
+*.h5
+
+# Temporary files
+.DS_Store
+Thumbs.db
+*.tmp
+*_tmp/
+inter.html
+__tmp__/
+
+# IDE
+.vscode/
+.idea/
+*~
+
+# OS
+desktop.ini
+
+# Keep small model artifacts if desired - but model files can be large
+# modelo_web/model.json
+# modelo_web/clases.json
+# modelo_web/LEEME.txt

@@ -1,0 +1,11 @@
+{
+  "clases": [
+    "fondo",
+    "lata",
+    "plastico",
+    "vidrio"
+  ],
+  "tamano_img": 160,
+  "total_clases": 4,
+  "descripcion": "Mapeo de índices para el Punto Verde Inteligente"
+}
