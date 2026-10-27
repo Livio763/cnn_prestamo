@@ -1,16 +1,12 @@
 """
 FastAPI Serverless Application para Préstamo Inteligente.
 Compatible con Vercel Serverless Functions y ejecución local con Uvicorn.
-Sirve tanto las rutas de API (/api/...) como la interfaz web y el modelo CNN.
 """
 
-import os
 import datetime
 from typing import Optional, List
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 try:
@@ -27,6 +23,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def corregir_ruta_vercel(request: Request, call_next):
+    # En Vercel, la ruta original solicitada se envía en el encabezado x-matched-path
+    matched = request.headers.get("x-matched-path", "")
+    if matched:
+        request.scope["path"] = matched
+    response = await call_next(request)
+    return response
 
 
 @app.on_event("startup")
@@ -57,19 +63,10 @@ class SincronizarClasesRequest(BaseModel):
     clases: List[str]
 
 
-@app.middleware("http")
-async def registrar_ruta_middleware(request, call_next):
-    response = await call_next(request)
-    response.headers["X-Request-Path"] = request.url.path
-    return response
-
-
 router = APIRouter()
 
 
 @router.get("/health")
-@router.get("/index")
-@router.get("/index/health")
 def health():
     return {
         "status": "ok",
@@ -247,21 +244,6 @@ def sincronizar_clases(req: SincronizarClasesRequest):
     return {"sincronizados": nuevos}
 
 
-# Montar las rutas API tanto en /api/... como directamente
+# Montar las rutas API tanto con /api como sin prefijo
 app.include_router(router, prefix="/api")
-app.include_router(router, prefix="/api/index")
 app.include_router(router)
-
-# Ruta raíz para servir index.html
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-@app.get("/")
-def home():
-    index_path = os.path.join(ROOT_DIR, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"status": "ok", "mensaje": "Préstamo Inteligente"}
-
-# Montar los archivos estáticos en la raíz (css, js, modelo_web)
-if os.path.exists(os.path.join(ROOT_DIR, "css")):
-    app.mount("/", StaticFiles(directory=ROOT_DIR, html=True), name="static")
