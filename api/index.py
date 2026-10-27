@@ -1,18 +1,25 @@
 """
 FastAPI Serverless Application para Préstamo Inteligente.
 Compatible con Vercel Serverless Functions y ejecución local con Uvicorn.
+Sirve tanto las rutas de API (/api/...) como la interfaz web y el modelo CNN.
 """
 
+import os
+import urllib.parse
 import datetime
 from typing import Optional, List
-from fastapi import FastAPI, APIRouter, HTTPException, Request
+from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 try:
     from api import db
 except ImportError:
     import db
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 app = FastAPI(title="Préstamo Inteligente API", version="1.0.0", redirect_slashes=False)
 
@@ -25,25 +32,25 @@ app.add_middleware(
 )
 
 
-import urllib.parse
-
-
 class VercelPathMiddleware:
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") == "http":
-            headers = dict(scope.get("headers", []))
-            matched = headers.get(b"x-matched-path", b"").decode("utf-8")
             query = scope.get("query_string", b"").decode("utf-8")
-            if matched and matched != "/api/index.py":
-                scope["path"] = matched
-            elif "path=" in query:
+            if "path=" in query:
                 params = urllib.parse.parse_qs(query)
                 subpath = params.get("path", [""])[0].strip("/")
                 if subpath:
-                    scope["path"] = f"/api/{subpath}"
+                    scope["path"] = f"/{subpath}"
+                else:
+                    scope["path"] = "/"
+            else:
+                headers = dict(scope.get("headers", []))
+                matched = headers.get(b"x-matched-path", b"").decode("utf-8")
+                if matched and matched != "/api/index.py":
+                    scope["path"] = matched
             scope["raw_path"] = scope["path"].encode("utf-8")
         await self.app(scope, receive, send)
 
@@ -55,6 +62,37 @@ app.add_middleware(VercelPathMiddleware)
 def on_startup():
     db.init_db()
 
+
+# ---------------------------------------------------------------------------
+# Frontend y archivos estáticos
+# ---------------------------------------------------------------------------
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/index.html", response_class=HTMLResponse)
+def index():
+    html_path = os.path.join(BASE_DIR, "index.html")
+    if os.path.exists(html_path):
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h1>Préstamo Inteligente</h1>"
+
+
+css_dir = os.path.join(BASE_DIR, "css")
+if os.path.isdir(css_dir):
+    app.mount("/css", StaticFiles(directory=css_dir), name="css")
+
+js_dir = os.path.join(BASE_DIR, "js")
+if os.path.isdir(js_dir):
+    app.mount("/js", StaticFiles(directory=js_dir), name="js")
+
+modelo_dir = os.path.join(BASE_DIR, "modelo_web")
+if os.path.isdir(modelo_dir):
+    app.mount("/modelo_web", StaticFiles(directory=modelo_dir), name="modelo_web")
+
+
+# ---------------------------------------------------------------------------
+# API Endpoints
+# ---------------------------------------------------------------------------
 
 class CrearObjetoRequest(BaseModel):
     id: str
@@ -260,6 +298,6 @@ def sincronizar_clases(req: SincronizarClasesRequest):
     return {"sincronizados": nuevos}
 
 
-# Montar las rutas API tanto con /api como sin prefijo
+# Montar las rutas API con prefijo /api y también sin él
 app.include_router(router, prefix="/api")
 app.include_router(router)
