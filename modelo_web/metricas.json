@@ -1,0 +1,116 @@
+{
+  "accuracy_global": 0.8872180451127819,
+  "accuracy_por_clase": {
+    "_desconocido": 1.0,
+    "calculadora": 0.7307692307692307,
+    "cargador": 0.9629629629629629,
+    "mouse": 0.9117647058823529,
+    "tester": 1.0,
+    "usb": 0.8333333333333334
+  },
+  "conteos_validacion": {
+    "_desconocido": 9,
+    "calculadora": 26,
+    "cargador": 27,
+    "mouse": 34,
+    "tester": 13,
+    "usb": 24
+  },
+  "matriz_confusion": {
+    "_desconocido": {
+      "_desconocido": 9,
+      "calculadora": 0,
+      "cargador": 0,
+      "mouse": 0,
+      "tester": 0,
+      "usb": 0
+    },
+    "calculadora": {
+      "_desconocido": 0,
+      "calculadora": 19,
+      "cargador": 0,
+      "mouse": 5,
+      "tester": 0,
+      "usb": 2
+    },
+    "cargador": {
+      "_desconocido": 0,
+      "calculadora": 0,
+      "cargador": 26,
+      "mouse": 0,
+      "tester": 0,
+      "usb": 1
+    },
+    "mouse": {
+      "_desconocido": 0,
+      "calculadora": 2,
+      "cargador": 1,
+      "mouse": 31,
+      "tester": 0,
+      "usb": 0
+    },
+    "tester": {
+      "_desconocido": 0,
+      "calculadora": 0,
+      "cargador": 0,
+      "mouse": 0,
+      "tester": 13,
+      "usb": 0
+    },
+    "usb": {
+      "_desconocido": 1,
+      "calculadora": 1,
+      "cargador": 2,
+      "mouse": 0,
+      "tester": 0,
+      "usb": 20
+    }
+  },
+  "total_validacion": 133,
+  "fecha": "2026-10-26T23:40:45",
+  "tamano_img": 160,
+  "split": "aleatorio",
+  "clases": [
+    "_desconocido",
+    "calculadora",
+    "cargador",
+    "mouse",
+    "tester",
+    "usb"
+  ],
+  "conteos": {
+    "_desconocido": 45,
+    "calculadora": 131,
+    "cargador": 138,
+    "mouse": 169,
+    "tester": 66,
+    "usb": 120
+  },
+  "sesiones": {
+    "_desconocido": [
+      "sesion_01",
+      "sesion_02"
+    ],
+    "calculadora": [
+      "sesion_01",
+      "sesion_02"
+    ],
+    "cargador": [
+      "sesion_01",
+      "sesion_02"
+    ],
+    "mouse": [
+      "sesion_01",
+      "sesion_02"
+    ],
+    "tester": [
+      "sesion_01",
+      "sesion_02"
+    ],
+    "usb": [
+      "sesion_01",
+      "sesion_02"
+    ]
+  },
+  "epochs_entrenados": 40
+}

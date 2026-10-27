@@ -1,11 +1,11 @@
 {
   "format": "layers-model",
-  "generatedBy": "keras v2.15.0",
-  "convertedBy": "Punto Verde Converter",
+  "generatedBy": "keras",
+  "convertedBy": "prestamo_entrenar.py",
   "modelTopology": {
     "class_name": "Sequential",
     "config": {
-      "name": "sequential_reciclaje",
+      "name": "cnn_prestamo",
       "layers": [
         {
           "class_name": "InputLayer",
@@ -17,7 +17,7 @@
               3
             ],
             "dtype": "float32",
-            "name": "input_camara"
+            "name": "entrada_camara"
           }
         },
         {
@@ -33,7 +33,7 @@
         {
           "class_name": "Conv2D",
           "config": {
-            "name": "conv2d_1",
+            "name": "conv_1",
             "trainable": true,
             "dtype": "float32",
             "filters": 32,
@@ -52,15 +52,13 @@
               1
             ],
             "groups": 1,
-            "activation": "linear",
-            "use_bias": false,
+            "activation": "relu",
+            "use_bias": true,
             "kernel_initializer": {
               "module": "keras.initializers",
-              "class_name": "GlorotUniform",
+              "class_name": "HeNormal",
               "config": {
-                "seed": null,
-                "input_axes": null,
-                "output_axes": null
+                "seed": null
               },
               "registered_name": null
             },
@@ -78,63 +76,9 @@
           }
         },
         {
-          "class_name": "BatchNormalization",
-          "config": {
-            "name": "bn_1",
-            "trainable": true,
-            "dtype": "float32",
-            "axis": -1,
-            "momentum": 0.99,
-            "epsilon": 0.001,
-            "center": true,
-            "scale": true,
-            "beta_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Zeros",
-              "config": {},
-              "registered_name": null
-            },
-            "gamma_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Ones",
-              "config": {},
-              "registered_name": null
-            },
-            "moving_mean_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Zeros",
-              "config": {},
-              "registered_name": null
-            },
-            "moving_variance_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Ones",
-              "config": {},
-              "registered_name": null
-            },
-            "beta_regularizer": null,
-            "gamma_regularizer": null,
-            "beta_constraint": null,
-            "gamma_constraint": null,
-            "synchronized": false,
-            "renorm": false,
-            "renorm_clipping": null,
-            "renorm_momentum": 0.99
-          }
-        },
-        {
-          "class_name": "Activation",
-          "config": {
-            "name": "relu_1",
-            "trainable": true,
-            "dtype": "float32",
-            "activation": "relu"
-          }
-        },
-        {
           "class_name": "MaxPooling2D",
           "config": {
-            "name": "maxpool_1",
+            "name": "pool_1",
             "trainable": true,
             "dtype": "float32",
             "pool_size": [
@@ -155,15 +99,15 @@
             "name": "drop_1",
             "trainable": true,
             "dtype": "float32",
-            "rate": 0.1,
-            "seed": null,
-            "noise_shape": null
+            "rate": 0.05,
+            "noise_shape": null,
+            "seed": null
           }
         },
         {
           "class_name": "Conv2D",
           "config": {
-            "name": "conv2d_2",
+            "name": "conv_2",
             "trainable": true,
             "dtype": "float32",
             "filters": 64,
@@ -182,15 +126,13 @@
               1
             ],
             "groups": 1,
-            "activation": "linear",
-            "use_bias": false,
+            "activation": "relu",
+            "use_bias": true,
             "kernel_initializer": {
               "module": "keras.initializers",
-              "class_name": "GlorotUniform",
+              "class_name": "HeNormal",
               "config": {
-                "seed": null,
-                "input_axes": null,
-                "output_axes": null
+                "seed": null
               },
               "registered_name": null
             },
@@ -208,63 +150,9 @@
           }
         },
         {
-          "class_name": "BatchNormalization",
-          "config": {
-            "name": "bn_2",
-            "trainable": true,
-            "dtype": "float32",
-            "axis": -1,
-            "momentum": 0.99,
-            "epsilon": 0.001,
-            "center": true,
-            "scale": true,
-            "beta_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Zeros",
-              "config": {},
-              "registered_name": null
-            },
-            "gamma_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Ones",
-              "config": {},
-              "registered_name": null
-            },
-            "moving_mean_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Zeros",
-              "config": {},
-              "registered_name": null
-            },
-            "moving_variance_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Ones",
-              "config": {},
-              "registered_name": null
-            },
-            "beta_regularizer": null,
-            "gamma_regularizer": null,
-            "beta_constraint": null,
-            "gamma_constraint": null,
-            "synchronized": false,
-            "renorm": false,
-            "renorm_clipping": null,
-            "renorm_momentum": 0.99
-          }
-        },
-        {
-          "class_name": "Activation",
-          "config": {
-            "name": "relu_2",
-            "trainable": true,
-            "dtype": "float32",
-            "activation": "relu"
-          }
-        },
-        {
           "class_name": "MaxPooling2D",
           "config": {
-            "name": "maxpool_2",
+            "name": "pool_2",
             "trainable": true,
             "dtype": "float32",
             "pool_size": [
@@ -285,15 +173,15 @@
             "name": "drop_2",
             "trainable": true,
             "dtype": "float32",
-            "rate": 0.15,
-            "seed": null,
-            "noise_shape": null
+            "rate": 0.1,
+            "noise_shape": null,
+            "seed": null
           }
         },
         {
           "class_name": "Conv2D",
           "config": {
-            "name": "conv2d_3",
+            "name": "conv_3",
             "trainable": true,
             "dtype": "float32",
             "filters": 128,
@@ -312,15 +200,13 @@
               1
             ],
             "groups": 1,
-            "activation": "linear",
-            "use_bias": false,
+            "activation": "relu",
+            "use_bias": true,
             "kernel_initializer": {
               "module": "keras.initializers",
-              "class_name": "GlorotUniform",
+              "class_name": "HeNormal",
               "config": {
-                "seed": null,
-                "input_axes": null,
-                "output_axes": null
+                "seed": null
               },
               "registered_name": null
             },
@@ -338,63 +224,9 @@
           }
         },
         {
-          "class_name": "BatchNormalization",
-          "config": {
-            "name": "bn_3",
-            "trainable": true,
-            "dtype": "float32",
-            "axis": -1,
-            "momentum": 0.99,
-            "epsilon": 0.001,
-            "center": true,
-            "scale": true,
-            "beta_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Zeros",
-              "config": {},
-              "registered_name": null
-            },
-            "gamma_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Ones",
-              "config": {},
-              "registered_name": null
-            },
-            "moving_mean_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Zeros",
-              "config": {},
-              "registered_name": null
-            },
-            "moving_variance_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Ones",
-              "config": {},
-              "registered_name": null
-            },
-            "beta_regularizer": null,
-            "gamma_regularizer": null,
-            "beta_constraint": null,
-            "gamma_constraint": null,
-            "synchronized": false,
-            "renorm": false,
-            "renorm_clipping": null,
-            "renorm_momentum": 0.99
-          }
-        },
-        {
-          "class_name": "Activation",
-          "config": {
-            "name": "relu_3",
-            "trainable": true,
-            "dtype": "float32",
-            "activation": "relu"
-          }
-        },
-        {
           "class_name": "MaxPooling2D",
           "config": {
-            "name": "maxpool_3",
+            "name": "pool_3",
             "trainable": true,
             "dtype": "float32",
             "pool_size": [
@@ -415,15 +247,15 @@
             "name": "drop_3",
             "trainable": true,
             "dtype": "float32",
-            "rate": 0.2,
-            "seed": null,
-            "noise_shape": null
+            "rate": 0.12,
+            "noise_shape": null,
+            "seed": null
           }
         },
         {
           "class_name": "Conv2D",
           "config": {
-            "name": "conv2d_4",
+            "name": "conv_4",
             "trainable": true,
             "dtype": "float32",
             "filters": 256,
@@ -442,15 +274,13 @@
               1
             ],
             "groups": 1,
-            "activation": "linear",
-            "use_bias": false,
+            "activation": "relu",
+            "use_bias": true,
             "kernel_initializer": {
               "module": "keras.initializers",
-              "class_name": "GlorotUniform",
+              "class_name": "HeNormal",
               "config": {
-                "seed": null,
-                "input_axes": null,
-                "output_axes": null
+                "seed": null
               },
               "registered_name": null
             },
@@ -468,63 +298,9 @@
           }
         },
         {
-          "class_name": "BatchNormalization",
-          "config": {
-            "name": "bn_4",
-            "trainable": true,
-            "dtype": "float32",
-            "axis": -1,
-            "momentum": 0.99,
-            "epsilon": 0.001,
-            "center": true,
-            "scale": true,
-            "beta_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Zeros",
-              "config": {},
-              "registered_name": null
-            },
-            "gamma_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Ones",
-              "config": {},
-              "registered_name": null
-            },
-            "moving_mean_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Zeros",
-              "config": {},
-              "registered_name": null
-            },
-            "moving_variance_initializer": {
-              "module": "keras.initializers",
-              "class_name": "Ones",
-              "config": {},
-              "registered_name": null
-            },
-            "beta_regularizer": null,
-            "gamma_regularizer": null,
-            "beta_constraint": null,
-            "gamma_constraint": null,
-            "synchronized": false,
-            "renorm": false,
-            "renorm_clipping": null,
-            "renorm_momentum": 0.99
-          }
-        },
-        {
-          "class_name": "Activation",
-          "config": {
-            "name": "relu_4",
-            "trainable": true,
-            "dtype": "float32",
-            "activation": "relu"
-          }
-        },
-        {
           "class_name": "MaxPooling2D",
           "config": {
-            "name": "maxpool_4",
+            "name": "pool_4",
             "trainable": true,
             "dtype": "float32",
             "pool_size": [
@@ -545,9 +321,9 @@
             "name": "drop_4",
             "trainable": true,
             "dtype": "float32",
-            "rate": 0.25,
-            "seed": null,
-            "noise_shape": null
+            "rate": 0.15,
+            "noise_shape": null,
+            "seed": null
           }
         },
         {
@@ -573,9 +349,7 @@
               "module": "keras.initializers",
               "class_name": "GlorotUniform",
               "config": {
-                "seed": null,
-                "input_axes": null,
-                "output_axes": null
+                "seed": null
               },
               "registered_name": null
             },
@@ -587,9 +361,9 @@
             },
             "kernel_regularizer": null,
             "bias_regularizer": null,
+            "activity_regularizer": null,
             "kernel_constraint": null,
-            "bias_constraint": null,
-            "quantization_config": null
+            "bias_constraint": null
           }
         },
         {
@@ -598,27 +372,25 @@
             "name": "drop_final",
             "trainable": true,
             "dtype": "float32",
-            "rate": 0.3,
-            "seed": null,
-            "noise_shape": null
+            "rate": 0.25,
+            "noise_shape": null,
+            "seed": null
           }
         },
         {
           "class_name": "Dense",
           "config": {
-            "name": "salida_probabilidades",
+            "name": "salida_clases",
             "trainable": true,
             "dtype": "float32",
-            "units": 4,
+            "units": 6,
             "activation": "softmax",
             "use_bias": true,
             "kernel_initializer": {
               "module": "keras.initializers",
               "class_name": "GlorotUniform",
               "config": {
-                "seed": null,
-                "input_axes": null,
-                "output_axes": null
+                "seed": null
               },
               "registered_name": null
             },
@@ -630,9 +402,9 @@
             },
             "kernel_regularizer": null,
             "bias_regularizer": null,
+            "activity_regularizer": null,
             "kernel_constraint": null,
-            "bias_constraint": null,
-            "quantization_config": null
+            "bias_constraint": null
           }
         }
       ]
@@ -647,7 +419,7 @@
       ],
       "weights": [
         {
-          "name": "conv2d_1/kernel",
+          "name": "conv_1/kernel",
           "shape": [
             3,
             3,
@@ -657,35 +429,14 @@
           "dtype": "float32"
         },
         {
-          "name": "bn_1/gamma",
+          "name": "conv_1/bias",
           "shape": [
             32
           ],
           "dtype": "float32"
         },
         {
-          "name": "bn_1/beta",
-          "shape": [
-            32
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "bn_1/moving_mean",
-          "shape": [
-            32
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "bn_1/moving_variance",
-          "shape": [
-            32
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "conv2d_2/kernel",
+          "name": "conv_2/kernel",
           "shape": [
             3,
             3,
@@ -695,35 +446,14 @@
           "dtype": "float32"
         },
         {
-          "name": "bn_2/gamma",
+          "name": "conv_2/bias",
           "shape": [
             64
           ],
           "dtype": "float32"
         },
         {
-          "name": "bn_2/beta",
-          "shape": [
-            64
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "bn_2/moving_mean",
-          "shape": [
-            64
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "bn_2/moving_variance",
-          "shape": [
-            64
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "conv2d_3/kernel",
+          "name": "conv_3/kernel",
           "shape": [
             3,
             3,
@@ -733,35 +463,14 @@
           "dtype": "float32"
         },
         {
-          "name": "bn_3/gamma",
+          "name": "conv_3/bias",
           "shape": [
             128
           ],
           "dtype": "float32"
         },
         {
-          "name": "bn_3/beta",
-          "shape": [
-            128
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "bn_3/moving_mean",
-          "shape": [
-            128
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "bn_3/moving_variance",
-          "shape": [
-            128
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "conv2d_4/kernel",
+          "name": "conv_4/kernel",
           "shape": [
             3,
             3,
@@ -771,28 +480,7 @@
           "dtype": "float32"
         },
         {
-          "name": "bn_4/gamma",
-          "shape": [
-            256
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "bn_4/beta",
-          "shape": [
-            256
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "bn_4/moving_mean",
-          "shape": [
-            256
-          ],
-          "dtype": "float32"
-        },
-        {
-          "name": "bn_4/moving_variance",
+          "name": "conv_4/bias",
           "shape": [
             256
           ],
@@ -814,17 +502,17 @@
           "dtype": "float32"
         },
         {
-          "name": "salida_probabilidades/kernel",
+          "name": "salida_clases/kernel",
           "shape": [
             128,
-            4
+            6
           ],
           "dtype": "float32"
         },
         {
-          "name": "salida_probabilidades/bias",
+          "name": "salida_clases/bias",
           "shape": [
-            4
+            6
           ],
           "dtype": "float32"
         }

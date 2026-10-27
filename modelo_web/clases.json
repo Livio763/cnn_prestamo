@@ -1,11 +1,21 @@
 {
   "clases": [
-    "fondo",
-    "lata",
-    "plastico",
-    "vidrio"
+    "_desconocido",
+    "calculadora",
+    "cargador",
+    "mouse",
+    "tester",
+    "usb"
   ],
   "tamano_img": 160,
-  "total_clases": 4,
-  "descripcion": "Mapeo de índices para el Punto Verde Inteligente"
+  "total_clases": 6,
+  "descripcion": "Clases del sistema de préstamo de objetos",
+  "conteos": {
+    "_desconocido": 45,
+    "calculadora": 131,
+    "cargador": 138,
+    "mouse": 169,
+    "tester": 66,
+    "usb": 120
+  }
 }

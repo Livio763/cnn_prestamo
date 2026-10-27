@@ -1,1 +1,13 @@
-# Esta carpeta contendrá model.json y los fragmentos .bin generados por entrenar.py
+Esta carpeta la genera `entrenar.py`.
+
+Archivos esperados:
+
+- `model.json`
+- `group1-shard1of1.bin`
+- `clases.json`
+- `metricas.json`
+
+No edites estos archivos a mano. Si faltan, ejecuta:
+
+    cd prestamo
+    python entrenar.py
